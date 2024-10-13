@@ -142,14 +142,19 @@ class EdgeTTS:
         except Exception as e:
             raise RuntimeError(f"Error playing audio: {e}")
 
-    def play_background_music(self, music_path: str):
+    def play_background_music(self, music_path: str, volume: float = 0.1):
         """
-        Plays background music continuously in a loop using pygame.
+        Plays background music continuously in a loop using pygame, with a specified volume.
+        The volume value should be between 0.0 and 1.0.
         """
         try:
-            self.background_channel.play(pygame.mixer.Sound(music_path), loops=-1)  # Loop indefinitely
+            if not self.background_channel.get_busy():  # Check if background music is already playing
+                sound = pygame.mixer.Sound(music_path)
+                sound.set_volume(volume)  # Set the volume (e.g., 0.1 for low volume)
+                self.background_channel.play(sound, loops=-1)  # Loop indefinitely
         except Exception as e:
             raise RuntimeError(f"Error playing background music: {e}")
+
 
 # Initialize client with API key
 api_key = st.text_input("Enter your Groq API key to proceed:")
@@ -159,7 +164,7 @@ client = Groq(api_key=api_key) if api_key else None
 tts_engine = EdgeTTS()
 
 # Path to the background music file
-background_music_path = "song.mp3"
+background_music_path = "DRUMS.mp3"
 
 # Function to speak the assistant's responses
 def speak_response(text: str, voice: str = "hi-IN-MadhurNeural"):
@@ -173,11 +178,13 @@ chat_history = []
 # Function to get user input and provide responses
 def main():
     st.title("Vaidyaraj - Ancient Indian Health Wisdom")
-    st.markdown("### Discover the wisdom of Ayurveda, Yoga, and traditional Indian practices for holistic health and well-being.")
+    st.markdown("""Discover the wisdom of Ayurveda, Homeopathy, English medicines...""")
+    st.markdown("               Made with 💖 in India")
 
-    # Play background music if the path is valid
+    # Play background music with a lower volume (e.g., 20% of the full volume)
     if background_music_path:
-        tts_engine.play_background_music(background_music_path)
+        tts_engine.play_background_music(background_music_path, volume=0.1)  # Adjust volume as needed
+
 
     if client:
         # Display previous chat messages
