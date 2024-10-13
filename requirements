@@ -1,0 +1,6 @@
+pathlib
+asyncio
+groq
+pygame
+streamlit
+edge_tts
