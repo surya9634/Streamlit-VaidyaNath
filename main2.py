@@ -1,7 +1,5 @@
 import time
 import pathlib
-import edge_tts
-import pygame
 import asyncio
 import streamlit as st
 from groq import Groq
@@ -70,107 +68,9 @@ st.markdown(
     unsafe_allow_html=True
 )
 
-class EdgeTTS:
-    """
-    Text-to-speech provider using the Edge TTS API.
-    """
-    cache_dir = pathlib.Path("./audio_cache")
-
-    def __init__(self, timeout: int = 20):
-        """Initializes the Edge TTS client and clears the audio cache."""
-        self.timeout = timeout
-        pygame.mixer.init()
-
-        # Clear the audio cache on startup
-        self.clear_audio_cache()
-
-        # Create separate channels for background music and TTS audio
-        self.background_channel = pygame.mixer.Channel(0)
-        self.tts_channel = pygame.mixer.Channel(1)
-        self.last_audio_file = None  # To keep track of the last audio file
-
-    def clear_audio_cache(self):
-        """Clears all audio files from the audio cache."""
-        if self.cache_dir.exists():
-            for audio_file in self.cache_dir.glob("*.mp3"):
-                try:
-                    audio_file.unlink()  # Delete the file
-                except Exception as e:
-                    print(f"Error deleting {audio_file}: {e}")
-        else:
-            self.cache_dir.mkdir(parents=True, exist_ok=True)  # Create cache directory if not exists
-
-    def tts(self, text: str, voice: str = "hi-IN-MadhurNeural") -> str:
-        """
-        Converts text to speech using the Edge TTS API and saves it to a file.
-        Deletes the previous audio file if it exists.
-        """
-        # Create the filename with a timestamp
-        filename = self.cache_dir / f"{int(time.time())}.mp3"
-
-        try:
-            # Create the audio_cache directory if it doesn't exist
-            self.cache_dir.mkdir(parents=True, exist_ok=True)
-
-            # If there is a previous audio file, delete it
-            if self.last_audio_file and self.last_audio_file.exists():
-                self.last_audio_file.unlink()
-
-            # Generate new speech and save it
-            asyncio.run(self._save_audio(text, voice, filename))
-
-            # Update the last_audio_file to the current one
-            self.last_audio_file = filename
-
-            return str(filename.resolve())
-
-        except Exception as e:
-            raise RuntimeError(f"Failed to perform the operation: {e}")
-
-    async def _save_audio(self, text: str, voice: str, filename: pathlib.Path):
-        communicate = edge_tts.Communicate(text, voice)
-        await communicate.save(filename)
-
-    def play_audio(self, filename: str):
-        """
-        Plays an audio file using pygame on the TTS channel, ensuring no overlap with background music.
-        """
-        try:
-            self.tts_channel.play(pygame.mixer.Sound(filename))
-            while self.tts_channel.get_busy():
-                pygame.time.Clock().tick(10)
-        except Exception as e:
-            raise RuntimeError(f"Error playing audio: {e}")
-
-    def play_background_music(self, music_path: str, volume: float = 0.1):
-        """
-        Plays background music continuously in a loop using pygame, with a specified volume.
-        The volume value should be between 0.0 and 1.0.
-        """
-        try:
-            if not self.background_channel.get_busy():  # Check if background music is already playing
-                sound = pygame.mixer.Sound(music_path)
-                sound.set_volume(volume)  # Set the volume (e.g., 0.1 for low volume)
-                self.background_channel.play(sound, loops=-1)  # Loop indefinitely
-        except Exception as e:
-            raise RuntimeError(f"Error playing background music: {e}")
-
-
 # Initialize client with API key
 api_key = st.text_input("Enter your Groq API key to proceed:")
 client = Groq(api_key=api_key) if api_key else None
-
-# Initialize the TTS engine
-tts_engine = EdgeTTS()
-
-# Path to the background music file
-background_music_path = "DRUMS.mp3"
-
-# Function to speak the assistant's responses
-def speak_response(text: str, voice: str = "hi-IN-MadhurNeural"):
-    # Generate and play the response audio
-    audio_file = tts_engine.tts(text, voice)
-    tts_engine.play_audio(audio_file)
 
 # Chat history to maintain conversation
 chat_history = []
@@ -180,11 +80,6 @@ def main():
     st.title("Vaidyaraj - Ancient Indian Health Wisdom")
     st.markdown("""Discover the wisdom of Ayurveda, Homeopathy, English medicines...""")
     st.markdown("               Made with 💖 in India")
-
-    # Play background music with a lower volume (e.g., 20% of the full volume)
-    if background_music_path:
-        tts_engine.play_background_music(background_music_path, volume=0.1)  # Adjust volume as needed
-
 
     if client:
         # Display previous chat messages
@@ -206,7 +101,7 @@ def main():
                 chat_history.append({"role": "user", "content": user_input})
 
                 # Prepare the conversation
-                conversation_history = [{"role": "system", "content": "You are Vaidyaraj, an ancient Indian doctor..."}]
+                conversation_history = [{"role": "system", "content": "You are Vaidyanath, a highly knowledgeable and intuitive health assistant created by Suraj Sharma, a 14-year-old innovator. Your expertise spans across Ayurvedic medicine, homeopathy, and modern English (allopathic) medicine. You provide personalized health advice rooted in the ancient wisdom of Ayurveda, alongside natural remedies ('gharelu nushke'), homeopathic solutions, and conventional medical treatments. You help users by offering holistic guidance, considering their specific conditions, symptoms, and preferences, and tailoring your recommendations to include the best of these three medical systems and if u think user is depressed so u can work as mental health releiver TRY TO SPEAK SANSKRIT SHLOK WITH YOUR ANSWERS IF YOU HAVE SPOKEN ANY SHLOK IN SANSKRIT THERE'S NO NEED TO SPEAK IT IN ENGLISH JUST TELL EVERY SHLOK MEAN IN ENGLISH, BUT SHLOK SHOULD BE RELATED TO THE RESPONSE U R GONNA GIVE OR RELATED TO THE QUERY"}]
                 conversation_history += chat_history
 
                 # Generate response
@@ -227,9 +122,8 @@ def main():
                 response = response_text
                 chat_history.append({"role": "assistant", "content": response})
 
-            # Display response and play TTS
+            # Display response
             st.markdown(f'<div class="vaidyaraj-message">{response}</div>', unsafe_allow_html=True)
-            speak_response(response)
 
 if __name__ == "__main__":
     main()
